@@ -223,33 +223,51 @@ public class FileCombiner {
         }      
     }
     
- 	private void constructFileList(ArrayList<SourceFile> output, Collection<SourceFile> dependencies, Stack<SourceFile> sourceStack, boolean verbose, boolean eliminateUnused) {
+ 	private void constructFileList(ArrayList<SourceFile> output, Collection<SourceFile> dependencies, Stack<SourceFile> ancestorStack, boolean verbose, boolean eliminateUnused) {
 		for (Iterator<SourceFile> it = dependencies.iterator(); it.hasNext();) {
 			SourceFile sourceFile = it.next();
+			
 			if (verbose) {
 				System.err.println("[INFO] Verifying dependencies of '" + sourceFile.getName());
 			}
-			if (sourceStack.contains(sourceFile)) {
-				for(Iterator<SourceFile> ssIt = sourceStack.iterator(); ssIt.hasNext();) {
+			
+			// If the ancestor stack contains the file we have a cycle.
+			if (ancestorStack.contains(sourceFile)) {
+				for(Iterator<SourceFile> ssIt = ancestorStack.iterator(); ssIt.hasNext();) {
 					SourceFile dependent = ssIt.next();
+					// Check if the ancestor is both depedent and dependee - if so - quit the application.
 					if (dependent.hasDependency(sourceFile) && sourceFile.hasDependency(dependent)) {
 						System.err.println("ERROR: Circular dependency found" + sourceFile.getName() + " and " + dependent.getName());
 						System.exit(1);						
 					}
 				}
 			}
+			
+			// If file already output skip.
 			if (output.contains(sourceFile)) {
 				continue;
 			}
-			if (!sourceFile.hasDependencies() && !eliminateUnused) { 
-				output.add(sourceFile);
+			
+			// If the file has no dependencies no need to go deeper.
+			if (!sourceFile.hasDependencies()) {
+				// If eliminateUnused flag is raised don't add to output
+				if (!eliminateUnused) {
+					output.add(sourceFile);					
+				}
 				continue;
 			}
-			sourceStack.push(sourceFile);
+			
+			// Add file to ancestor stack and check depencies recursivly.
+			ancestorStack.push(sourceFile);
+			
 			ArrayList<SourceFile> dependencySourceFiles = new ArrayList<SourceFile>(java.util.Arrays.asList(sourceFile.getDependencies()));
-			constructFileList(output, dependencySourceFiles, sourceStack, verbose, eliminateUnused);
+			constructFileList(output, dependencySourceFiles, ancestorStack, verbose, eliminateUnused);
+			
+			// The file can safly be added to output.
 			output.add(sourceFile);
-			sourceStack.pop();
+			
+			// Remove the file from stack.
+			ancestorStack.pop();
 		}
 	}
     
