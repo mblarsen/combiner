@@ -29,7 +29,10 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Stack;
 
 public class FileCombiner {
 
@@ -55,8 +58,13 @@ public class FileCombiner {
      */
     public void combine(Writer out, File[] files, String charset, boolean verbose, boolean separator, boolean eliminateUnused){
         processSourceFiles(files, charset, verbose);
-        SourceFile[] finalFiles = constructFileList(verbose, eliminateUnused);
-        writeToOutput(out, finalFiles, verbose, separator);
+	
+		ArrayList<SourceFile> finalFiles = new ArrayList<SourceFile>();
+		constructFileList(finalFiles, sourceFiles.values(), new Stack<SourceFile>(), verbose, eliminateUnused);			
+		SourceFile[] finalSourceFiles = new SourceFile[finalFiles.size()];
+        finalFiles.toArray(finalSourceFiles);
+        
+        writeToOutput(out, finalSourceFiles, verbose, separator);
     }
     
     /**
@@ -215,41 +223,35 @@ public class FileCombiner {
         }      
     }
     
-    private SourceFile[] constructFileList(boolean verbose, boolean eliminateUnused){
-        ArrayList finalFiles = new ArrayList();
-        SourceFile[] files = new SourceFile[sourceFiles.size()];
-        sourceFiles.values().toArray(files);
-        
-        //check for circular references
-        for (int i=0; i < files.length; i++){
-            
-            if (verbose){
-                System.err.println("[INFO] Verifying dependencies of '" + files[i].getName() + "'");
-            }
-            
-            for (int j=i+1; j < files.length; j++){
-                
-                boolean dependsOn = files[i].hasDependency(files[j]);
-                boolean isDependencyOf = files[j].hasDependency(files[i]);
-
-                if (dependsOn && isDependencyOf){
-                    System.err.println("[ERROR] Circular dependencies: '" + files[i].getName() + "' and '" + files[j].getName() + "'");    
-                    System.exit(1);
-                } else if (!eliminateUnused || (dependsOn || isDependencyOf)) {
-                    if (!finalFiles.contains(files[i])){
-                        finalFiles.add(files[i]);
-                    }
-                    if (!finalFiles.contains(files[j])){
-                        finalFiles.add(files[j]);
-                    }                        
-                }            
-            }
-        }
-        SourceFile[] finalSourceFiles = new SourceFile[finalFiles.size()];
-        finalFiles.toArray(finalSourceFiles);
-        java.util.Arrays.sort(finalSourceFiles, new SourceFileComparator());        
-        return finalSourceFiles;                
-    }
+ 	private void constructFileList(ArrayList<SourceFile> output, Collection<SourceFile> dependencies, Stack<SourceFile> sourceStack, boolean verbose, boolean eliminateUnused) {
+		for (Iterator<SourceFile> it = dependencies.iterator(); it.hasNext();) {
+			SourceFile sourceFile = it.next();
+			if (verbose) {
+				System.err.println("[INFO] Verifying dependencies of '" + sourceFile.getName());
+			}
+			if (sourceStack.contains(sourceFile)) {
+				for(Iterator<SourceFile> ssIt = sourceStack.iterator(); ssIt.hasNext();) {
+					SourceFile dependent = ssIt.next();
+					if (dependent.hasDependency(sourceFile) && sourceFile.hasDependency(dependent)) {
+						System.err.println("ERROR: Circular dependency found" + sourceFile.getName() + " and " + dependent.getName());
+						System.exit(1);						
+					}
+				}
+			}
+			if (output.contains(sourceFile)) {
+				continue;
+			}
+			if (!sourceFile.hasDependencies() && !eliminateUnused) { 
+				output.add(sourceFile);
+				continue;
+			}
+			sourceStack.push(sourceFile);
+			ArrayList<SourceFile> dependencySourceFiles = new ArrayList<SourceFile>(java.util.Arrays.asList(sourceFile.getDependencies()));
+			constructFileList(output, dependencySourceFiles, sourceStack, verbose, eliminateUnused);
+			output.add(sourceFile);
+			sourceStack.pop();
+		}
+	}
     
     private void writeToOutput(Writer out, SourceFile[] finalFiles, boolean verbose, boolean separator){
         try {
