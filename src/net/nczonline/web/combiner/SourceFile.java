@@ -80,7 +80,7 @@ public class SourceFile {
         return !dependencies.isEmpty();                
     }
     
-    public boolean hasDependency(String filename){
+    public boolean hasDependency(String filename) throws java.io.IOException {
         boolean found = false;
         for (int i=0; i < dependencies.size() && !found; i++){
             SourceFile temp = (SourceFile) dependencies.get(i);
@@ -89,12 +89,11 @@ public class SourceFile {
         return found;        
     }
     
-    public boolean hasDependency(File file){
-        return hasDependency(file.getAbsolutePath());       
+    public boolean hasDependency(File file) throws java.io.IOException {
+        return hasDependency(file.getCanonicalPath());       
     }
     
-    public boolean hasDependency(SourceFile file){
+    public boolean hasDependency(SourceFile file) throws java.io.IOException {
         return hasDependency(file.getName());
-    }
-    
+    }  
 }

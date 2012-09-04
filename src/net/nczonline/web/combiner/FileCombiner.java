@@ -56,7 +56,7 @@ public class FileCombiner {
      * @param separator Indicates if a separator should be output between files in the final output.
      * @param eliminateUnused Indicates if unused files (those with no dependencies and upon which nothing depends) should be eliminated.
      */
-    public void combine(Writer out, File[] files, String charset, boolean verbose, boolean separator, boolean eliminateUnused){
+    public void combine(Writer out, File[] files, String charset, boolean verbose, boolean separator, boolean eliminateUnused) throws java.io.IOException {
         processSourceFiles(files, charset, verbose);
 	
 		ArrayList<SourceFile> finalFiles = new ArrayList<SourceFile>();
@@ -76,7 +76,7 @@ public class FileCombiner {
      * @param separator Indicates if a separator should be output between files in the final output.
      * @param eliminateUnused Indicates if unused files (those with no dependencies and upon which nothing depends) should be eliminated.
      */    
-    public void combine(Writer out, String[] filenames, String charset, boolean verbose, boolean separator, boolean eliminateUnused){
+    public void combine(Writer out, String[] filenames, String charset, boolean verbose, boolean separator, boolean eliminateUnused) throws java.io.IOException {
         ArrayList files = new ArrayList();
         
         for (int i=0; i < filenames.length; i++){
@@ -84,7 +84,7 @@ public class FileCombiner {
             if (file.isFile()){
                 files.add(file);
                 if (verbose){
-                    System.err.println("[INFO] Adding file '" + file.getAbsolutePath() + "'");
+                    System.err.println("[INFO] Adding file '" + file.getCanonicalPath() + "'");
                 }
             } else {
                 if (verbose){
@@ -99,7 +99,7 @@ public class FileCombiner {
         combine(out, finalFiles, charset, verbose, separator, eliminateUnused);
     }
     
-    private void processSourceFiles(File[] files, String charset, boolean verbose){
+    private void processSourceFiles(File[] files, String charset, boolean verbose) throws java.io.IOException {
         //add to ToDo list
         for (int i=0; i < files.length; i++){
             todo.add(files[i]);
@@ -117,19 +117,19 @@ public class FileCombiner {
         }
     }
     
-    private SourceFile getSourceFile(File file){
+    private SourceFile getSourceFile(File file) throws java.io.IOException {
         SourceFile sourceFile = null;
-        if (sourceFiles.containsKey(file.getAbsolutePath())){
-            return (SourceFile) sourceFiles.get(file.getAbsolutePath());
+        if (sourceFiles.containsKey(file.getCanonicalPath())){
+            return (SourceFile) sourceFiles.get(file.getCanonicalPath());
         } else {
             sourceFile = new SourceFile(file);
-            sourceFiles.put(file.getAbsolutePath(), sourceFile);
+            sourceFiles.put(file.getCanonicalPath(), sourceFile);
             return sourceFile;
         }
               
     }
     
-    private void processSourceFile(File file, String charset, boolean verbose) {
+    private void processSourceFile(File file, String charset, boolean verbose) throws java.io.IOException {
         SourceFile sourceFile = getSourceFile(file);
         
         //if it already has dependencies, then it's already been processed (prevents infinite loop if a circular dependency is detected)
@@ -223,7 +223,7 @@ public class FileCombiner {
         }      
     }
     
- 	private void constructFileList(ArrayList<SourceFile> output, Collection<SourceFile> dependencies, Stack<SourceFile> ancestorStack, boolean verbose, boolean eliminateUnused) {
+ 	private void constructFileList(ArrayList<SourceFile> output, Collection<SourceFile> dependencies, Stack<SourceFile> ancestorStack, boolean verbose, boolean eliminateUnused) throws java.io.IOException{
 		for (Iterator<SourceFile> it = dependencies.iterator(); it.hasNext();) {
 			SourceFile sourceFile = it.next();
 			
@@ -247,7 +247,7 @@ public class FileCombiner {
 			if (output.contains(sourceFile)) {
 				continue;
 			}
-			
+						
 			// If the file has no dependencies no need to go deeper.
 			if (!sourceFile.hasDependencies()) {
 				// If eliminateUnused flag is raised don't add to output
@@ -271,11 +271,11 @@ public class FileCombiner {
 		}
 	}
     
-    private void writeToOutput(Writer out, SourceFile[] finalFiles, boolean verbose, boolean separator){
+    private void writeToOutput(Writer out, SourceFile[] finalFiles, boolean verbose, boolean separator) {
         try {
-            for (int i=0; i < finalFiles.length; i++){
+            for (int i=0; i < finalFiles.length; i++) {
                 if (verbose){
-                    System.err.println("[INFO] Adding '" + finalFiles[i].getName() + "' to output.");
+                    System.out.println("[INFO] Adding '" + finalFiles[i].getCanonicalPath() + "' to output.");
                 }
                 if (separator){
                     out.write("\n/*------" + finalFiles[i].getName() + "------*/\n");
@@ -287,5 +287,4 @@ public class FileCombiner {
             System.exit(1);
         }            
     }
-
 }
