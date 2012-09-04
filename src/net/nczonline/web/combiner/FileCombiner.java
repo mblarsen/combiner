@@ -275,7 +275,7 @@ public class FileCombiner {
         try {
             for (int i=0; i < finalFiles.length; i++) {
                 if (verbose){
-                    System.out.println("[INFO] Adding '" + finalFiles[i].getCanonicalPath() + "' to output.");
+                    System.out.println("[INFO] Adding '" + finalFiles[i].getName() + "' to output.");
                 }
                 if (separator){
                     out.write("\n/*------" + finalFiles[i].getName() + "------*/\n");
